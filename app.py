@@ -1,55 +1,74 @@
 import streamlit as st
 import easyocr
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 
-# Дефиниране на вредни Е-номера и описания
+# Речник с вредни съставки и информация за тях [cite: 147, 253, 257, 261]
 harmful_ingredients = {
-    "E407": "Карагенан - може да предизвика възпаления и храносмилателни проблеми.",
-    "E621": "Натриев глутамат - подсилвател на вкуса, може да причини главоболие.",
-    "E250": "Натриев нитрит - консервант, риск от онкологични заболявания.",
-    "E450": "Дифосфати - могат да нарушат калциевия баланс и да увредят бъбреците.",
-    "E952": "Цикламат - изкуствен подсладител.",
-    "E262": "Натриев ацетат - може да дразни стомаха.",
-    "E330": "Лимонена киселина - в големи дози уврежда зъбния емайл.",
-    "E300": "Аскорбинова киселина - в големи дози дразни стомаха."
+    "E621": "Мононатриев глутамат (главоболие, сърцебиене)",
+    "Е621": "Мононатриев глутамат (главоболие, сърцебиене)", # Кирилица
+    "E407": "Карагенан (възможни възпаления в червата)",
+    "Е407": "Карагенан (възможни възпаления в червата)",
+    "E450": "Дифосфати (риск за костите и бъбреците)",
+    "Е450": "Дифосфати (риск за костите и бъбреците)",
+    "E250": "Натриев нитрит (риск от онкологични заболявания)",
+    "Е250": "Натриев нитрит (риск от онкологични заболявания)",
+    "палмово масло": "Високо съдържание на наситени мазнини",
+    "palm oil": "High saturated fat content",
+    "захар": "Висок гликемичен индекс",
+    "sugar": "High glycemic index"
 }
 
-st.title("🧪 Анализатор на етикети")
+st.set_page_config(page_title="AI Анализатор на Храни", layout="centered")
 
-# Качване на снимка
-uploaded_file = st.file_uploader("Качете снимка на етикет:", type=["jpg", "jpeg", "png"])
+st.title("🔍 ИИ Анализатор на етикети")
+st.write("Качете снимка на етикет, за да проверите за вредни съставки.")
+
+# Избор на език за OCR [cite: 61]
+languages = st.multiselect("Изберете езици на етикета:", ["bg", "en"], default=["bg", "en"])
+
+# Опции за качване: Файл или Камера [cite: 57, 62]
+upload_option = st.radio("Изберете метод:", ("Качване на файл", "Снимка с камера"))
+
+if upload_option == "Качване на файл":
+    uploaded_file = st.file_uploader("Изберете изображение...", type=["jpg", "jpeg", "png"])
+else:
+    uploaded_file = st.camera_input("Направете снимка на етикета")
 
 if uploaded_file is not None:
     image = Image.open(uploaded_file)
-    st.image(image, caption='Качен етикет', use_container_width=True)
+    st.image(image, caption='Качен етикет', use_column_width=True)
     
-    # Инициализиране на EasyOCR
-    reader = easyocr.Reader(['bg', 'en'])
-    
-    with st.spinner('ИИ анализира текста...'):
+    with st.spinner('Анализиране на текста... Моля, изчакайте.'):
+        # Превръщане на изображението в масив за EasyOCR [cite: 76]
         img_array = np.array(image)
-        result = reader.readtext(img_array)
         
-        # Сортиране на текста отгоре-надолу
-        result.sort(key=lambda x: x[0][0][1])
+        # Инициализиране на OCR четеца [cite: 67, 68]
+        reader = easyocr.Reader(languages)
+        result = reader.readtext(img_array, detail=0)
         
-        detected_text = " ".join([res[1] for res in result])
+        full_text = " ".join(result).lower()
         
-        st.subheader("Разпознат текст:")
-        st.info(detected_text)
+        st.subheader("📋 Резултати от анализа:")
         
-        # Търсене на вредни съставки
-        found_issues = []
-        for key, description in harmful_ingredients.items():
-            if key.upper() in detected_text.upper():
-                found_issues.append(f"⚠️ **{key}**: {description}")
+        found_harmful = []
+        for ingredient, description in harmful_ingredients.items():
+            if ingredient.lower() in full_text:
+                found_harmful.append(f"⚠️ **{ingredient}**: {description}")
         
-        st.subheader("Резултати:")
-        if found_issues:
-            for issue in found_issues:
-                st.error(issue)
+        if found_harmful:
+            st.error("Открити са потенциално вредни съставки:")
+            for item in found_harmful:
+                st.write(item)
         else:
-            st.success("Не са открити вредни съставки от нашия списък.")
+            st.success("Не са открити критични вредни съставки от нашия списък.")
+            
+        with st.expander("Виж разпознатия текст"):
+            st.write(full_text)
 
-    st.download_button("Изтегли текста", detected_text, file_name="label_text.txt")
+# Инструкции за публикуване [cite: 124, 127]
+# За да работи това, създайте файл 'requirements.txt' със следното съдържание:
+# streamlit
+# easyocr
+# numpy
+# Pillow
