@@ -1,4 +1,7 @@
-streamlit [cite: 125]
-easyocr [cite: 125]
-pillow [cite: 125]
-numpy [cite: 125]
+streamlit
+easyocr
+pillow
+numpy
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
