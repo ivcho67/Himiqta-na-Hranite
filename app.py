@@ -8,8 +8,8 @@ harmful_e_numbers = {
     "E407": "Карагенан (възпаления, храносмилателни проблеми)",
     "E621": "Натриев глутамат (главоболие, алергии)",
     "E262": "Натриев ацетат (дразни стомаха)",
-    "E300": "Аскорбинова киселина (в големи дози дразни стомаха)",
-    "E330": "Лимонена киселина (уврежда зъбния емайл)",
+    "E300": "Аскорбинова киселина (дразни стомаха)",
+    "E330": "Лимонена киселина (уврежда емайла)",
     "E250": "Натриев нитрит (риск от онкологични заболявания)",
     "E952": "Цикламат - подсладител",
     "E471": "Емулгатор",
@@ -23,11 +23,12 @@ uploaded_file = st.file_uploader("Качи изображение на етик�
 
 if uploaded_file is not None:
     image = Image.open(uploaded_file)
-    st.image(image, caption='Качен етикет')
+    st.image(image, caption='Качен етикет', use_container_width=True)
     
+    # Инициализиране на модела
     reader = easyocr.Reader(['bg', 'en'])
     
-    with st.spinner('Анализиране...'):
+    with st.spinner('Анализиране на текста...'):
         img_array = np.array(image)
         result = reader.readtext(img_array)
         full_text = " ".join([res[1] for res in result])
@@ -35,11 +36,17 @@ if uploaded_file is not None:
         st.subheader("Разпознат текст:")
         st.write(full_text)
         
-        found = [f"**{c}**: {d}" for c, d in harmful_e_numbers.items() if c in full_text.upper()]
+        # Търсене на съвпадения
+        found_harmful = []
+        for code, description in harmful_e_numbers.items():
+            if code.upper() in full_text.upper():
+                found_harmful.append(f"**{code}**: {description}")
         
-        st.subheader("Резултати:")
-        if found:
-            for item in found:
+        st.subheader("Открити вредни съставки:")
+        if found_harmful:
+            for item in found_harmful:
                 st.error(item)
         else:
             st.success("Няма открити опасни Е-номера.")
+
+    st.download_button("Изтегли текста", full_text, file_name="label_text.txt")
